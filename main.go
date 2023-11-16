@@ -1,6 +1,9 @@
 package main
 
-import "github.com/veandco/go-sdl2/sdl"
+import (
+	"github.com/brus-fabrika/sdl2test/shapes"
+	"github.com/veandco/go-sdl2/sdl"
+)
 
 func main() {
 	if err := sdl.Init(sdl.INIT_EVERYTHING); err != nil {
@@ -30,20 +33,13 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	defer rend.Destroy()
+	abrRender := &shapes.AbrRenderer{Renderer: rend}
+	defer abrRender.Destroy()
 
-	rect2 := sdl.Rect{X: 350, Y: 250, W: 100, H: 100}
-	if err := rend.SetDrawColor(255, 255, 255, 255); err != nil {
-		println("Error setting draw colour: ", sdl.GetError().Error())
-		panic(err)
-	}
+	rect3 := shapes.RectangleShape{Rect: sdl.Rect{X: 300, Y: 200, W: 200, H: 200}, Color: sdl.Color{R: 255, G: 0, B: 255, A: 255}}
+	abrRender.DrawShape(&rect3)
 
-	if err := rend.DrawRect(&rect2); err != nil {
-		println("Error draw rectangle: ", sdl.GetError())
-		panic(err)
-	}
-
-	rend.Present()
+	abrRender.Present()
 
 	running := true
 	for running {
