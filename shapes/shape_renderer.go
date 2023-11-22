@@ -10,6 +10,27 @@ type AbrRenderer struct {
 	*sdl.Renderer
 }
 
+type Vec3F struct {
+	X, Y, Z float64
+}
+
+type Vec3 struct {
+	X, Y, Z int32
+}
+
+type TriangleF struct {
+	A, B, C Vec3F
+}
+
+type Triangle struct {
+	A, B, C Vec3
+}
+
+type Mesh struct {
+	Triangles []Triangle
+	Color     sdl.Color
+}
+
 func (renderer *AbrRenderer) DrawRectangleShape(rect *RectangleShape) error {
 	if err := renderer.SetDrawColor(rect.Color.R, rect.Color.G, rect.Color.B, rect.Color.A); err != nil {
 		return err
@@ -32,6 +53,22 @@ func (renderer *AbrRenderer) DrawCircleShape(c *CircleShape) error {
 		return err
 	}
 	return nil
+}
+
+func (renderer *AbrRenderer) DrawMesh(m *Mesh) error {
+	if err := renderer.SetDrawColor(m.Color.R, m.Color.G, m.Color.B, m.Color.A); err != nil {
+		return err
+	}
+
+	var err error
+
+	for _, t := range m.Triangles {
+		err = renderer.DrawLine(t.A.X, t.A.Y, t.B.X, t.B.Y)
+		err = renderer.DrawLine(t.B.X, t.B.Y, t.C.X, t.C.Y)
+		err = renderer.DrawLine(t.C.X, t.C.Y, t.A.X, t.A.Y)
+	}
+
+	return err
 }
 
 func RotateSdlPoint(p *sdl.Point, angle float64) *sdl.Point {
