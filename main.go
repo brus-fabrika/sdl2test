@@ -4,35 +4,92 @@ import (
 	"math"
 
 	"github.com/brus-fabrika/sdl2test/shapes"
-	"github.com/veandco/go-sdl2/gfx"
 	"github.com/veandco/go-sdl2/sdl"
 	"github.com/veandco/go-sdl2/ttf"
 )
 
-func main() {
+const (
+	SCREEN_WIDTH  = 800
+	SCREEN_HEIGHT = 600
+	FRAMERATE     = 10.0
+)
 
+type Engine struct {
+	Window   *sdl.Window
+	Renderer *shapes.AbrRenderer
+	Font     *ttf.Font
+}
+
+func (e *Engine) Init() error {
 	if err := sdl.Init(sdl.INIT_EVERYTHING); err != nil {
-		panic(err)
+		return err
 	}
-	defer sdl.Quit()
 
-	window, err := sdl.CreateWindow("SDL2 Test Window", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
-		800, 600, sdl.WINDOW_SHOWN|sdl.WINDOW_OPENGL)
+	wnd, err := sdl.CreateWindow("SDL2 Test Window", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
+		SCREEN_WIDTH, SCREEN_HEIGHT, sdl.WINDOW_SHOWN|sdl.WINDOW_OPENGL)
 	if err != nil {
-		panic(err)
+		return err
 	}
-	defer window.Destroy()
+	e.Window = wnd
+
+	rend, err := sdl.CreateRenderer(e.Window, -1, sdl.RENDERER_ACCELERATED)
+	if err != nil {
+		return err
+	}
+	e.Renderer = &shapes.AbrRenderer{Renderer: rend}
 
 	if err := ttf.Init(); err != nil {
-		panic(err)
+		return err
 	}
-	defer ttf.Quit()
 
-	font, err := ttf.OpenFont("C:/Windows/Fonts/arial.ttf", 20)
+	fnt, err := ttf.OpenFont("C:/Windows/Fonts/arial.ttf", 20)
 	if err != nil {
-		panic(sdl.GetError())
+		return err
 	}
-	defer font.Close()
+	e.Font = fnt
+
+	return nil
+}
+
+func (e *Engine) Destroy() {
+	println("Destroying...")
+
+	if e.Font != nil {
+		e.Font.Close()
+	}
+	if e.Renderer != nil {
+		e.Renderer.Destroy()
+	}
+	if e.Window != nil {
+		e.Window.Destroy()
+	}
+
+	ttf.Quit()
+	sdl.Quit()
+}
+
+func (e *Engine) Rendertext(s string) error {
+	text_surf, err := e.Font.RenderUTF8Solid(s, sdl.Color{R: 255, G: 255, B: 255, A: 255})
+	if err != nil {
+		return err
+	}
+	defer text_surf.Free()
+
+	text_texture, err := e.Renderer.CreateTextureFromSurface(text_surf)
+	if err != nil {
+		return err
+	}
+	defer text_texture.Destroy()
+
+	ws, hs, err := e.Font.SizeUTF8(s)
+
+	text_rect := sdl.Rect{X: 0, Y: 0, W: int32(ws), H: int32(hs)}
+	e.Renderer.Copy(text_texture, nil, &text_rect)
+
+	return nil
+}
+
+func main() {
 
 	//	surface, err := window.GetSurface()
 	//	if err != nil {
@@ -45,55 +102,14 @@ func main() {
 	//	pixel := sdl.MapRGBA(surface.Format, colour.R, colour.G, colour.B, colour.A)
 	//	surface.FillRect(&rect, pixel)
 
-	rend, err := sdl.CreateRenderer(window, -1, sdl.RENDERER_ACCELERATED)
-	if err != nil {
+	e := Engine{}
+	if err := e.Init(); err != nil {
+		e.Destroy()
 		panic(err)
 	}
-	abrRender := &shapes.AbrRenderer{Renderer: rend}
-	defer abrRender.Destroy()
+	defer e.Destroy()
 
-	rect3 := shapes.RectangleShape{Rect: sdl.Rect{X: 300, Y: 200, W: 200, H: 200}, Color: sdl.Color{R: 255, G: 0, B: 255, A: 255}}
-	abrRender.DrawRectangleShape(&rect3)
-
-	c := shapes.MakeCircleShape(300, 200, 50, 4, sdl.Color{R: 0, G: 0, B: 255, A: 255})
-	c.SetOrigin(50, 50)
-	abrRender.DrawCircleShape(c)
-
-	c.Rotate(math.Pi / 3)
-	c.SetColor(sdl.Color{R: 0, G: 255, B: 0, A: 255})
-	abrRender.DrawCircleShape(c)
-
-	ps := sdl.Point{X: 350, Y: 250}
-	pe := sdl.Point{X: 400, Y: 250}
-	pe2 := sdl.Point{X: 400, Y: 300}
-
-	abrRender.DrawLine(ps.X, ps.Y, pe.X, pe.Y)
-
-	b := gfx.ThickLineRGBA(abrRender.Renderer, ps.X, ps.Y, pe2.X, pe2.Y, 10, 0, 0, 255, 255)
-	if b != true {
-		panic(sdl.GetError())
-	}
-
-	str := "Hello, World!"
-
-	text_surf, err := font.RenderUTF8Solid(str, sdl.Color{R: 255, G: 255, B: 255, A: 255})
-	if err != nil {
-		panic(err)
-	}
-	defer text_surf.Free()
-
-	text_texture, err := abrRender.CreateTextureFromSurface(text_surf)
-	if err != nil {
-		panic(err)
-	}
-	defer text_texture.Destroy()
-
-	ws, hs, err := font.SizeUTF8(str)
-
-	text_rect := sdl.Rect{X: 0, Y: 0, W: int32(ws), H: int32(hs)}
-	abrRender.Copy(text_texture, nil, &text_rect)
-
-	abrRender.Present()
+	//	e.Renderer.Present()
 
 	frameCounter := 0
 
@@ -115,24 +131,13 @@ func main() {
 			}
 		}
 
-		abrRender.SetDrawColor(0, 0, 0, 255)
-		abrRender.Clear()
-		abrRender.Present()
-
-		abrRender.SetDrawColor(250, 0, 0, 255)
-		shapes.RotateSdlPointBase(&pe, ps, math.Pi/3)
-		abrRender.DrawLine(ps.X, ps.Y, pe.X, pe.Y)
-
-		c.Rotate(math.Pi / 3)
-		abrRender.DrawCircleShape(c)
-		abrRender.Present()
-
+		e.Renderer.Present()
 		end := sdl.GetPerformanceCounter()
 
 		elapsed := float64(end-start) / perfFreq * 1000.0
 
-		if 1000.0/30.0 > elapsed {
-			sdl.Delay(uint32(math.Floor(1000.0/60.0 - elapsed)))
+		if 1000.0/FRAMERATE > elapsed {
+			sdl.Delay(uint32(math.Floor(1000.0/FRAMERATE - elapsed)))
 		}
 
 		println(frameCounter)

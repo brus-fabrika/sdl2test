@@ -39,8 +39,8 @@ func RotateSdlPoint(p *sdl.Point, angle float64) *sdl.Point {
 		return nil
 	}
 	sina, cosa := math.Sincos(angle)
-	newX := int32(float64(p.X)*cosa - float64(p.Y)*sina)
-	newY := int32(float64(p.X)*sina + float64(p.Y)*cosa)
+	newX := int32(math.Round(float64(p.X)*cosa - float64(p.Y)*sina))
+	newY := int32(math.Round(float64(p.X)*sina + float64(p.Y)*cosa))
 	p.X = newX
 	p.Y = newY
 	return p
@@ -51,8 +51,9 @@ func RotateSdlPointBase(p *sdl.Point, bp sdl.Point, angle float64) *sdl.Point {
 		return nil
 	}
 	sina, cosa := math.Sincos(angle)
-	newX := bp.X + int32(float64(p.X-bp.X)*cosa-float64(p.Y-bp.Y)*sina)
-	newY := bp.Y + int32(float64(p.X-bp.X)*sina+float64(p.Y-bp.Y)*cosa)
+	newX := bp.X + int32(math.Round(float64(p.X-bp.X)*cosa-float64(p.Y-bp.Y)*sina))
+	newY := bp.Y + int32(math.Round(float64(p.X-bp.X)*sina+float64(p.Y-bp.Y)*cosa))
+
 	p.X = newX
 	p.Y = newY
 	return p
