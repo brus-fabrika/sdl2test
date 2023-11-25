@@ -11,7 +11,7 @@ type AbrRenderer struct {
 }
 
 type Vec3F struct {
-	X, Y, Z float64
+	X, Y, Z float32
 }
 
 type Vec3 struct {
@@ -27,8 +27,37 @@ type Triangle struct {
 }
 
 type Mesh struct {
-	Triangles []Triangle
+	Triangles []TriangleF
 	Color     sdl.Color
+}
+
+func (m *Mesh) Clone() *Mesh {
+	newMesh := &Mesh{
+		Color: m.Color,
+	}
+	newMesh.Triangles = make([]TriangleF, len(m.Triangles))
+	copy(newMesh.Triangles, m.Triangles)
+	return newMesh
+}
+
+func Add(v1, v2 *Vec3F) Vec3F {
+	return Vec3F{v1.X + v2.X, v1.Y + v2.Y, v1.Z + v2.Z}
+}
+
+func (t *Vec3F) Add(v *Vec3F) {
+	t.X += v.X
+	t.Y += v.Y
+	t.Z += v.Z
+}
+
+func Mul3F(v *Vec3F, s float32) Vec3F {
+	return Vec3F{v.X * s, v.Y * s, v.Z * s}
+}
+
+func (t *Vec3F) Mul(s float32) {
+	t.X *= s
+	t.Y *= s
+	t.Z *= s
 }
 
 func (renderer *AbrRenderer) DrawRectangleShape(rect *RectangleShape) error {
@@ -63,9 +92,9 @@ func (renderer *AbrRenderer) DrawMesh(m *Mesh) error {
 	var err error
 
 	for _, t := range m.Triangles {
-		err = renderer.DrawLine(t.A.X, t.A.Y, t.B.X, t.B.Y)
-		err = renderer.DrawLine(t.B.X, t.B.Y, t.C.X, t.C.Y)
-		err = renderer.DrawLine(t.C.X, t.C.Y, t.A.X, t.A.Y)
+		err = renderer.DrawLineF(t.A.X, t.A.Y, t.B.X, t.B.Y)
+		err = renderer.DrawLineF(t.B.X, t.B.Y, t.C.X, t.C.Y)
+		err = renderer.DrawLineF(t.C.X, t.C.Y, t.A.X, t.A.Y)
 	}
 
 	return err

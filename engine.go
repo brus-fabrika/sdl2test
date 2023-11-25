@@ -34,7 +34,7 @@ func (e *Engine) Init() error {
 		return err
 	}
 
-	fnt, err := ttf.OpenFont("C:/Windows/Fonts/arial.ttf", 20)
+	fnt, err := ttf.OpenFont("C:/Windows/Fonts/arial.ttf", 16)
 	if err != nil {
 		return err
 	}
@@ -60,7 +60,7 @@ func (e *Engine) Destroy() {
 	sdl.Quit()
 }
 
-func (e *Engine) RenderText(s string) error {
+func (e *Engine) RenderText(s string, x, y int32) error {
 	text_surf, err := e.Font.RenderUTF8Solid(s, sdl.Color{R: 255, G: 255, B: 255, A: 255})
 	if err != nil {
 		return err
@@ -75,7 +75,7 @@ func (e *Engine) RenderText(s string) error {
 
 	ws, hs, err := e.Font.SizeUTF8(s)
 
-	text_rect := sdl.Rect{X: 0, Y: 0, W: int32(ws), H: int32(hs)}
+	text_rect := sdl.Rect{X: x, Y: y, W: int32(ws), H: int32(hs)}
 	e.Renderer.Copy(text_texture, nil, &text_rect)
 
 	return nil
