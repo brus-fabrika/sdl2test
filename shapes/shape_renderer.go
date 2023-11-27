@@ -1,7 +1,11 @@
 package shapes
 
 import (
+	"bufio"
 	"math"
+	"os"
+	"strconv"
+	"strings"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -38,6 +42,66 @@ func (m *Mesh) Clone() *Mesh {
 	newMesh.Triangles = make([]TriangleF, len(m.Triangles))
 	copy(newMesh.Triangles, m.Triangles)
 	return newMesh
+}
+
+func (m *Mesh) LoadFromFile(fp string) error {
+	readFile, err := os.Open(fp)
+	if err != nil {
+		return err
+	}
+	defer readFile.Close()
+
+	fileScanner := bufio.NewScanner(readFile)
+	fileScanner.Split(bufio.ScanLines)
+
+	vs := make([]Vec3F, 0)
+	ts := make([]TriangleF, 0)
+
+	for fileScanner.Scan() {
+		line := fileScanner.Text()
+		s := strings.Split(line, " ")
+		if s[0] == "#" {
+			// skip comments
+		} else if s[0] == "v" {
+			// vertex
+			f1, _ := strconv.ParseFloat(s[1], 32)
+			f2, _ := strconv.ParseFloat(s[2], 32)
+			f3, _ := strconv.ParseFloat(s[3], 32)
+
+			v := Vec3F{X: float32(f1), Y: float32(f2), Z: float32(f3)}
+			vs = append(vs, v)
+		} else if s[0] == "vt" {
+			// texture coordinate
+		} else if s[0] == "vn" {
+			// normal
+		} else if s[0] == "f" {
+			// face
+
+			// keep it super simple for now
+			v1, _ := strconv.ParseInt(strings.Split(s[1], "/")[0], 10, 64)
+			v2, _ := strconv.ParseInt(strings.Split(s[2], "/")[0], 10, 64)
+			v3, _ := strconv.ParseInt(strings.Split(s[3], "/")[0], 10, 64)
+
+			ts = append(ts, TriangleF{A: vs[v1-1], B: vs[v2-1], C: vs[v3-1]})
+			/*
+				if len(ss) == 3 {
+					// vertex/texture/normal
+				} else if len(ss) == 2 {
+					// vertex/texture
+				} else if len(ss) == 1 {
+					// vertex
+				} else {
+					// unknown
+				}
+			*/
+		} else {
+			// unknown
+		}
+	}
+
+	m.Triangles = ts
+
+	return nil
 }
 
 func Add(v1, v2 *Vec3F) Vec3F {
