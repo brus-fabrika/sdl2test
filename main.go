@@ -39,7 +39,7 @@ func main() {
 		Color: sdl.Color{R: 255, G: 0, B: 255, A: 255},
 	}
 
-	err := m.LoadFromFile("obj/cube.obj")
+	err := m.LoadFromFile("obj/sphere.obj")
 	if err != nil {
 		panic(err)
 	}
@@ -52,10 +52,10 @@ func main() {
 	globElapsed := float64(0)
 	curFps := float64(FRAMERATE)
 
-	d0 := shapes.Vec3F{X: 0.0, Y: 0.0, Z: 0.0}
-	d1 := shapes.Vec3F{X: 1.0, Y: 0.0, Z: 0.0}
-	d2 := shapes.Vec3F{X: 0.0, Y: 1.0, Z: 0.0}
-	d3 := shapes.Vec3F{X: 0.0, Y: 0.0, Z: 1.0}
+	d0_1 := shapes.Vec3F{X: 0.0, Y: 0.0, Z: 1.0}
+	d1_1 := shapes.Vec3F{X: 1.0, Y: 0.0, Z: 1.0}
+	d2_1 := shapes.Vec3F{X: 0.0, Y: 1.0, Z: 1.0}
+	d3_1 := shapes.Vec3F{X: 0.0, Y: 0.0, Z: 2.0}
 
 	// perspective parameters
 	theta := math.Pi / 3
@@ -131,100 +131,105 @@ func main() {
 		e.RenderText("Frame: "+strconv.FormatInt(frameCounter, 10), 0, 0)
 		e.RenderText("FPS: "+strconv.FormatFloat(curFps, 'f', 2, 64), 0, 16)
 
-		/*
-			// cube render pipeline
-			t := m.Clone()
-				for i := range t.Triangles {
-					sinRotTheta, cosRotTheta := math.Sincos(float64(rotTheta))
-					// X-rotate
-					y := t.Triangles[i].A.Y*float32(cosRotTheta) - t.Triangles[i].A.Z*float32(sinRotTheta)
-					z := t.Triangles[i].A.Y*float32(sinRotTheta) + t.Triangles[i].A.Z*float32(cosRotTheta)
+		// cube render pipeline
+		t := m.Clone()
+		for i := range t.Triangles {
+			sinRotTheta, cosRotTheta := math.Sincos(float64(rotTheta))
+			// X-rotate
+			y := t.Triangles[i].A.Y*float32(cosRotTheta) - t.Triangles[i].A.Z*float32(sinRotTheta)
+			z := t.Triangles[i].A.Y*float32(sinRotTheta) + t.Triangles[i].A.Z*float32(cosRotTheta)
 
-					t.Triangles[i].A.Y = y
-					t.Triangles[i].A.Z = z
+			t.Triangles[i].A.Y = y
+			t.Triangles[i].A.Z = z
 
-					y = t.Triangles[i].B.Y*float32(cosRotTheta) - t.Triangles[i].B.Z*float32(sinRotTheta)
-					z = t.Triangles[i].B.Y*float32(sinRotTheta) + t.Triangles[i].B.Z*float32(cosRotTheta)
+			y = t.Triangles[i].B.Y*float32(cosRotTheta) - t.Triangles[i].B.Z*float32(sinRotTheta)
+			z = t.Triangles[i].B.Y*float32(sinRotTheta) + t.Triangles[i].B.Z*float32(cosRotTheta)
 
-					t.Triangles[i].B.Y = y
-					t.Triangles[i].B.Z = z
+			t.Triangles[i].B.Y = y
+			t.Triangles[i].B.Z = z
 
-					y = t.Triangles[i].C.Y*float32(cosRotTheta) - t.Triangles[i].C.Z*float32(sinRotTheta)
-					z = t.Triangles[i].C.Y*float32(sinRotTheta) + t.Triangles[i].C.Z*float32(cosRotTheta)
+			y = t.Triangles[i].C.Y*float32(cosRotTheta) - t.Triangles[i].C.Z*float32(sinRotTheta)
+			z = t.Triangles[i].C.Y*float32(sinRotTheta) + t.Triangles[i].C.Z*float32(cosRotTheta)
 
-					t.Triangles[i].C.Y = y
-					t.Triangles[i].C.Z = z
+			t.Triangles[i].C.Y = y
+			t.Triangles[i].C.Z = z
 
-					// Y-rotate
-					x := t.Triangles[i].A.X*float32(cosRotTheta) + t.Triangles[i].A.Z*float32(sinRotTheta)
-					z = -t.Triangles[i].A.X*float32(sinRotTheta) + t.Triangles[i].A.Z*float32(cosRotTheta)
-					t.Triangles[i].A.X = x
-					t.Triangles[i].A.Z = z
+			// Y-rotate
+			x := t.Triangles[i].A.X*float32(cosRotTheta) + t.Triangles[i].A.Z*float32(sinRotTheta)
+			z = -t.Triangles[i].A.X*float32(sinRotTheta) + t.Triangles[i].A.Z*float32(cosRotTheta)
+			t.Triangles[i].A.X = x
+			t.Triangles[i].A.Z = z
 
-					x = t.Triangles[i].B.X*float32(cosRotTheta) + t.Triangles[i].B.Z*float32(sinRotTheta)
-					z = -t.Triangles[i].B.X*float32(sinRotTheta) + t.Triangles[i].B.Z*float32(cosRotTheta)
-					t.Triangles[i].B.X = x
-					t.Triangles[i].B.Z = z
+			x = t.Triangles[i].B.X*float32(cosRotTheta) + t.Triangles[i].B.Z*float32(sinRotTheta)
+			z = -t.Triangles[i].B.X*float32(sinRotTheta) + t.Triangles[i].B.Z*float32(cosRotTheta)
+			t.Triangles[i].B.X = x
+			t.Triangles[i].B.Z = z
 
-					x = t.Triangles[i].C.X*float32(cosRotTheta) + t.Triangles[i].C.Z*float32(sinRotTheta)
-					z = -t.Triangles[i].C.X*float32(sinRotTheta) + t.Triangles[i].C.Z*float32(cosRotTheta)
-					t.Triangles[i].C.X = x
-					t.Triangles[i].C.Z = z
+			x = t.Triangles[i].C.X*float32(cosRotTheta) + t.Triangles[i].C.Z*float32(sinRotTheta)
+			z = -t.Triangles[i].C.X*float32(sinRotTheta) + t.Triangles[i].C.Z*float32(cosRotTheta)
+			t.Triangles[i].C.X = x
+			t.Triangles[i].C.Z = z
 
-					//Z-rotate
-					x = t.Triangles[i].A.X*float32(cosRotTheta) - t.Triangles[i].A.Y*float32(sinRotTheta)
-					y = t.Triangles[i].A.X*float32(sinRotTheta) + t.Triangles[i].A.Y*float32(cosRotTheta)
-					t.Triangles[i].A.X = x
-					t.Triangles[i].A.Y = y
+			//Z-rotate
+			x = t.Triangles[i].A.X*float32(cosRotTheta) - t.Triangles[i].A.Y*float32(sinRotTheta)
+			y = t.Triangles[i].A.X*float32(sinRotTheta) + t.Triangles[i].A.Y*float32(cosRotTheta)
+			t.Triangles[i].A.X = x
+			t.Triangles[i].A.Y = y
 
-					x = t.Triangles[i].B.X*float32(cosRotTheta) - t.Triangles[i].B.Y*float32(sinRotTheta)
-					y = t.Triangles[i].B.X*float32(sinRotTheta) + t.Triangles[i].B.Y*float32(cosRotTheta)
-					t.Triangles[i].B.X = x
-					t.Triangles[i].B.Y = y
+			x = t.Triangles[i].B.X*float32(cosRotTheta) - t.Triangles[i].B.Y*float32(sinRotTheta)
+			y = t.Triangles[i].B.X*float32(sinRotTheta) + t.Triangles[i].B.Y*float32(cosRotTheta)
+			t.Triangles[i].B.X = x
+			t.Triangles[i].B.Y = y
 
-					x = t.Triangles[i].C.X*float32(cosRotTheta) - t.Triangles[i].C.Y*float32(sinRotTheta)
-					y = t.Triangles[i].C.X*float32(sinRotTheta) + t.Triangles[i].C.Y*float32(cosRotTheta)
-					t.Triangles[i].C.X = x
-					t.Triangles[i].C.Y = y
+			x = t.Triangles[i].C.X*float32(cosRotTheta) - t.Triangles[i].C.Y*float32(sinRotTheta)
+			y = t.Triangles[i].C.X*float32(sinRotTheta) + t.Triangles[i].C.Y*float32(cosRotTheta)
+			t.Triangles[i].C.X = x
+			t.Triangles[i].C.Y = y
 
-					// z-translate
-					t.Triangles[i].A.Add(&shapes.Vec3F{X: 0.0, Y: 0.0, Z: Zbase})
-					t.Triangles[i].B.Add(&shapes.Vec3F{X: 0.0, Y: 0.0, Z: Zbase})
-					t.Triangles[i].C.Add(&shapes.Vec3F{X: 0.0, Y: 0.0, Z: Zbase})
+			// z-translate
+			t.Triangles[i].A.Add(&shapes.Vec3F{X: 0.0, Y: 0.0, Z: Zbase})
+			t.Triangles[i].B.Add(&shapes.Vec3F{X: 0.0, Y: 0.0, Z: Zbase})
+			t.Triangles[i].C.Add(&shapes.Vec3F{X: 0.0, Y: 0.0, Z: Zbase})
 
-					// perspective projection
-					t.Triangles[i].A.Mul(f / t.Triangles[i].A.Z)
-					t.Triangles[i].B.Mul(f / t.Triangles[i].B.Z)
-					t.Triangles[i].C.Mul(f / t.Triangles[i].C.Z)
+			// perspective projection
+			t.Triangles[i].A.Mul(f / t.Triangles[i].A.Z)
+			t.Triangles[i].B.Mul(f / t.Triangles[i].B.Z)
+			t.Triangles[i].C.Mul(f / t.Triangles[i].C.Z)
 
-					// scale into view
-					t.Triangles[i].A.Add(&shapes.Vec3F{X: 1.0, Y: 1.0, Z: 0.0})
-					t.Triangles[i].B.Add(&shapes.Vec3F{X: 1.0, Y: 1.0, Z: 0.0})
-					t.Triangles[i].C.Add(&shapes.Vec3F{X: 1.0, Y: 1.0, Z: 0.0})
+			// scale into view
+			t.Triangles[i].A.Add(&shapes.Vec3F{X: 1.0, Y: 1.0, Z: 0.0})
+			t.Triangles[i].B.Add(&shapes.Vec3F{X: 1.0, Y: 1.0, Z: 0.0})
+			t.Triangles[i].C.Add(&shapes.Vec3F{X: 1.0, Y: 1.0, Z: 0.0})
 
-					t.Triangles[i].A.Mul(0.5)
-					t.Triangles[i].B.Mul(0.5)
-					t.Triangles[i].C.Mul(0.5)
+			t.Triangles[i].A.Mul(0.5)
+			t.Triangles[i].B.Mul(0.5)
+			t.Triangles[i].C.Mul(0.5)
 
-					t.Triangles[i].A.X *= SCREEN_WIDTH
-					t.Triangles[i].A.Y *= SCREEN_HEIGHT
-					t.Triangles[i].B.X *= SCREEN_WIDTH
-					t.Triangles[i].B.Y *= SCREEN_HEIGHT
-					t.Triangles[i].C.X *= SCREEN_WIDTH
-					t.Triangles[i].C.Y *= SCREEN_HEIGHT
-				}
+			t.Triangles[i].A.X *= SCREEN_WIDTH
+			t.Triangles[i].A.Y *= SCREEN_HEIGHT
+			t.Triangles[i].B.X *= SCREEN_WIDTH
+			t.Triangles[i].B.Y *= SCREEN_HEIGHT
+			t.Triangles[i].C.X *= SCREEN_WIDTH
+			t.Triangles[i].C.Y *= SCREEN_HEIGHT
+		}
 
-				e.Renderer.DrawMesh(t)
-				// end pipeline
-		*/
-		// scale axes into view
-		// perspective projection
-		//d0.Mul(f / d0.Z)
-		//d1.Mul(f / d1.Z)
-		//d2.Mul(f / d2.Z)
-		//d3.Mul(f / d3.Z)
+		e.Renderer.DrawMesh(t)
+		// end pipeline
 
 		// scale into view
+
+		// scale axes into view
+		d0 := d0_1
+		d1 := d1_1
+		d2 := d2_1
+		d3 := d3_1
+
+		// perspective projection
+		d0.Mul(f / d0.Z)
+		d1.Mul(f / d1.Z)
+		d2.Mul(f / d2.Z)
+		d3.Mul(f / d3.Z)
+
 		d0.Add(&shapes.Vec3F{X: 1.0, Y: 1.0, Z: 0.0})
 		d1.Add(&shapes.Vec3F{X: 1.0, Y: 1.0, Z: 0.0})
 		d2.Add(&shapes.Vec3F{X: 1.0, Y: 1.0, Z: 0.0})
@@ -244,9 +249,9 @@ func main() {
 		d3.X *= SCREEN_WIDTH
 		d3.Y *= SCREEN_HEIGHT
 		// draw axes
-		gfx.ThickLineRGBA(e.Renderer.Renderer, int32(d0.X), int32(d0.Y), int32(d1.X), int32(d1.Y), 3, 0, 255, 0, 255)
-		gfx.ThickLineRGBA(e.Renderer.Renderer, int32(d0.X), int32(d0.Y), int32(d2.X), int32(d2.Y), 3, 0, 255, 0, 255)
-		gfx.ThickLineRGBA(e.Renderer.Renderer, int32(d0.X), int32(d0.Y), int32(d3.X), int32(d3.Y), 3, 0, 255, 0, 255)
+		gfx.ThickLineRGBA(e.Renderer.Renderer, int32(d0.X), int32(d0.Y), int32(d1.X), int32(d1.Y), 2, 0, 127, 0, 255)
+		gfx.ThickLineRGBA(e.Renderer.Renderer, int32(d0.X), int32(d0.Y), int32(d2.X), int32(d2.Y), 2, 0, 127, 0, 255)
+		gfx.ThickLineRGBA(e.Renderer.Renderer, int32(d0.X), int32(d0.Y), int32(d3.X), int32(d3.Y), 2, 0, 127, 0, 255)
 
 		e.Renderer.Present()
 		end := sdl.GetPerformanceCounter()
