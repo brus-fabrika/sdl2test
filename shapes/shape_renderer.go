@@ -2,6 +2,7 @@ package shapes
 
 import (
 	"bufio"
+	"fmt"
 	"math"
 	"os"
 	"strconv"
@@ -164,6 +165,25 @@ func (renderer *AbrRenderer) DrawMesh(m *Mesh) error {
 	return err
 }
 
+func (renderer *AbrRenderer) DrawMeshInRect(m *Mesh, x float32, y float32, w float32, h float32) error {
+	if err := renderer.SetDrawColor(m.Color.R, m.Color.G, m.Color.B, m.Color.A); err != nil {
+		return err
+	}
+
+	var err error
+
+	for _, t := range m.Triangles {
+		if (t.A.X < x || t.A.Y < y || t.A.X > x+w || t.A.Y > y+h) && (t.B.X < x || t.B.Y < y || t.B.X > x+w || t.B.Y > y+h) && (t.C.X < x || t.C.Y < y || t.C.X > x+w || t.C.Y > y+h) {
+			continue
+		}
+		err = renderer.DrawLineF(t.A.X, t.A.Y, t.B.X, t.B.Y)
+		err = renderer.DrawLineF(t.B.X, t.B.Y, t.C.X, t.C.Y)
+		err = renderer.DrawLineF(t.C.X, t.C.Y, t.A.X, t.A.Y)
+	}
+
+	return err
+}
+
 func RotateSdlPoint(p *sdl.Point, angle float64) *sdl.Point {
 	if p == nil {
 		return nil
@@ -194,4 +214,11 @@ func RotatePoint(x, y, cx, cy, angle float64) (float64, float64) {
 	x -= cx
 	y -= cy
 	return x*cos - y*sin + cx, x*sin + y*cos + cy
+}
+
+func (renderer *AbrRenderer) MeshDebugPrint(m *Mesh) {
+	fmt.Printf("Mesh:\n")
+	for _, t := range m.Triangles {
+		fmt.Printf("[{%f,%f,%f}, {%f,%f,%f}, {%f,%f,%f}]\n", t.A.X, t.A.Y, t.A.Z, t.B.X, t.B.Y, t.B.Z, t.C.X, t.C.Y, t.C.Z)
+	}
 }
