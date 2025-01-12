@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math"
 	"runtime"
 	"strconv"
@@ -15,6 +16,25 @@ const (
 	SCREEN_HEIGHT       = 600
 	FRAMERATE           = 30.0
 	USE_FIXED_FRAMERATE = false
+)
+
+type RotateDirection int
+
+const (
+	NO_ROTATE RotateDirection	= 0
+	X_ROTATE = 1
+	Y_ROTATE = 2
+	Z_ROTATE = 4
+)
+
+var (
+	COLOR_RED		= sdl.Color{R: 255, G:   0, B:   0, A: 255}
+	COLOR_GREEN		= sdl.Color{R:   0, G: 255, B:   0, A: 255}
+	COLOR_BLUE		= sdl.Color{R:   0, G:   0, B: 255, A: 255}
+	COLOR_PURPLE	= sdl.Color{R: 255, G:   0, B: 255, A: 255}
+	COLOR_WHITE		= sdl.Color{R: 255, G: 255, B: 255, A: 255}
+	COLOR_GRAY		= sdl.Color{R: 127, G: 127, B: 127, A: 255}
+	COLOR_BLACK		= sdl.Color{R:   0, G:   0, B:   0, A: 255}
 )
 
 type PerspectiveParameters struct {
@@ -38,6 +58,11 @@ func main() {
 	//	pixel := sdl.MapRGBA(surface.Format, colour.R, colour.G, colour.B, colour.A)
 	//	surface.FillRect(&rect, pixel)
 
+	fmt.Println("NO_ROTATE:", NO_ROTATE)
+	fmt.Println("X_ROTATE:", X_ROTATE)
+	fmt.Println("Y_ROTATE:", Y_ROTATE)
+	fmt.Println("Z_ROTATE:", Z_ROTATE)
+
 	e := Engine{}
 	if err := e.Init(); err != nil {
 		e.Destroy()
@@ -46,7 +71,7 @@ func main() {
 	defer e.Destroy()
 
 	m := shapes.Mesh{
-		Color: sdl.Color{R: 255, G: 0, B: 255, A: 255},
+		Color: COLOR_PURPLE,
 	}
 
 	err := m.LoadFromFile("obj/sphere.obj")
@@ -61,11 +86,6 @@ func main() {
 	globStart := sdl.GetPerformanceCounter()
 	globElapsed := float64(0)
 	curFps := float64(FRAMERATE)
-
-	d0_1 := shapes.Vec3F{X: 0.0, Y: 0.0, Z: 1.0}
-	d1_1 := shapes.Vec3F{X: 1.0, Y: 0.0, Z: 1.0}
-	d2_1 := shapes.Vec3F{X: 0.0, Y: 1.0, Z: 1.0}
-	d3_1 := shapes.Vec3F{X: 0.0, Y: 0.0, Z: 2.0}
 
 	// perspective parameters
 	theta := math.Pi / 3
@@ -161,21 +181,146 @@ func main() {
 		// cube render pipeline
 		t := m.Clone()
 		for i := range t.Triangles {
-			RotateTriangle(&t.Triangles[i], float64(rotTheta))
+			RotateTriangle(&t.Triangles[i], float64(rotTheta), Y_ROTATE)
 			ProjectTriangle(&t.Triangles[i], perspective)
 		}
 
 		//e.Renderer.MeshDebugPrint(t)
 
 		e.Renderer.DrawMesh(t)
-		e.Renderer.DrawRectangleShape(&shapes.RectangleShape{Rect: sdl.Rect{X: SCREEN_WIDTH / 4, Y: SCREEN_HEIGHT / 4, W: SCREEN_WIDTH / 2, H: SCREEN_HEIGHT / 2}, Color: sdl.Color{127, 127, 127, 0}})
-		//e.Renderer.DrawMeshInRect(t, SCREEN_WIDTH/4, SCREEN_HEIGHT/4, SCREEN_WIDTH/2, SCREEN_HEIGHT/2)
-		//e.Renderer.DrawMeshInRect(t, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
-		// end pipeline
+		e.Renderer.DrawRectangleShape(
+			&shapes.RectangleShape{
+				Rect: sdl.Rect{X: SCREEN_WIDTH / 4, Y: SCREEN_HEIGHT / 4, W: SCREEN_WIDTH / 2, H: SCREEN_HEIGHT / 2},
+				Color: COLOR_GRAY,
+		})
 
-		// scale into view
+		DrawAxes(&e, &perspective)
 
-		// scale axes into view
+		e.Renderer.Present()
+		end := sdl.GetPerformanceCounter()
+
+		elapsed := float64(end-start) / perfFreq * 1000.0
+
+		globElapsed = float64(end-globStart) / perfFreq * 1000.0
+		if globElapsed > 10.0*1000.0 {
+			globStart = sdl.GetPerformanceCounter()
+			curFps = float64(currentFrameCounter) / globElapsed * 1000.0
+			currentFrameCounter = 0
+
+			runtime.ReadMemStats(&mem)
+		}
+
+		if USE_FIXED_FRAMERATE {
+			if 1000.0/FRAMERATE > elapsed {
+				sdl.Delay(uint32(math.Floor(1000.0/FRAMERATE - elapsed)))
+			}
+		}
+
+		rotTheta += 0.01
+
+	}
+}
+
+func RotateTriangle(t *shapes.TriangleF, theta float64, rotate RotateDirection) {
+	if rotate == NO_ROTATE {
+		return
+	}
+
+	sinRotTheta, cosRotTheta := math.Sincos(theta)
+
+	if rotate & X_ROTATE != 0 {
+	// X-rotate
+	y := t.A.Y*float32(cosRotTheta) - t.A.Z*float32(sinRotTheta)
+	z := t.A.Y*float32(sinRotTheta) + t.A.Z*float32(cosRotTheta)
+
+	t.A.Y = y
+	t.A.Z = z
+
+	y = t.B.Y*float32(cosRotTheta) - t.B.Z*float32(sinRotTheta)
+	z = t.B.Y*float32(sinRotTheta) + t.B.Z*float32(cosRotTheta)
+
+	t.B.Y = y
+	t.B.Z = z
+
+	y = t.C.Y*float32(cosRotTheta) - t.C.Z*float32(sinRotTheta)
+	z = t.C.Y*float32(sinRotTheta) + t.C.Z*float32(cosRotTheta)
+
+	t.C.Y = y
+	t.C.Z = z
+	}
+
+	if rotate & Y_ROTATE != 0 {
+	// Y-rotate
+	x := t.A.X*float32(cosRotTheta) + t.A.Z*float32(sinRotTheta)
+	z := -t.A.X*float32(sinRotTheta) + t.A.Z*float32(cosRotTheta)
+	t.A.X = x
+	t.A.Z = z
+
+	x = t.B.X*float32(cosRotTheta) + t.B.Z*float32(sinRotTheta)
+	z = -t.B.X*float32(sinRotTheta) + t.B.Z*float32(cosRotTheta)
+	t.B.X = x
+	t.B.Z = z
+
+	x = t.C.X*float32(cosRotTheta) + t.C.Z*float32(sinRotTheta)
+	z = -t.C.X*float32(sinRotTheta) + t.C.Z*float32(cosRotTheta)
+	t.C.X = x
+	t.C.Z = z
+	}
+
+	if rotate & Z_ROTATE != 0 {
+	//Z-rotate
+		x := t.A.X*float32(cosRotTheta) - t.A.Y*float32(sinRotTheta)
+		y := t.A.X*float32(sinRotTheta) + t.A.Y*float32(cosRotTheta)
+	t.A.X = x
+	t.A.Y = y
+
+	x = t.B.X*float32(cosRotTheta) - t.B.Y*float32(sinRotTheta)
+	y = t.B.X*float32(sinRotTheta) + t.B.Y*float32(cosRotTheta)
+	t.B.X = x
+	t.B.Y = y
+
+	x = t.C.X*float32(cosRotTheta) - t.C.Y*float32(sinRotTheta)
+	y = t.C.X*float32(sinRotTheta) + t.C.Y*float32(cosRotTheta)
+	t.C.X = x
+	t.C.Y = y
+	}
+}
+
+func ProjectTriangle(t *shapes.TriangleF, p PerspectiveParameters) {
+	// z-translate
+	t.A.Add(&shapes.Vec3F{X: 0.0, Y: 0.0, Z: p.Zbase})
+	t.B.Add(&shapes.Vec3F{X: 0.0, Y: 0.0, Z: p.Zbase})
+	t.C.Add(&shapes.Vec3F{X: 0.0, Y: 0.0, Z: p.Zbase})
+
+	// perspective projection
+	t.A.Mul(p.Zoom / t.A.Z)
+	t.B.Mul(p.Zoom / t.B.Z)
+	t.C.Mul(p.Zoom / t.C.Z)
+
+	// scale into view
+	t.A.Add(&shapes.Vec3F{X: 1.0, Y: 1.0, Z: 0.0})
+	t.B.Add(&shapes.Vec3F{X: 1.0, Y: 1.0, Z: 0.0})
+	t.C.Add(&shapes.Vec3F{X: 1.0, Y: 1.0, Z: 0.0})
+
+	t.A.Mul(0.5)
+	t.B.Mul(0.5)
+	t.C.Mul(0.5)
+
+	t.A.X *= SCREEN_WIDTH
+	t.A.Y *= SCREEN_HEIGHT
+	t.B.X *= SCREEN_WIDTH
+	t.B.Y *= SCREEN_HEIGHT
+	t.C.X *= SCREEN_WIDTH
+	t.C.Y *= SCREEN_HEIGHT
+}
+
+func DrawAxes(e *Engine, perspective *PerspectiveParameters) {
+		d0_1 := shapes.Vec3F{X: 0.0, Y: 0.0, Z: 1.0}
+	d1_1 := shapes.Vec3F{X: 1.0, Y: 0.0, Z: 1.0}
+	d2_1 := shapes.Vec3F{X: 0.0, Y: 1.0, Z: 1.0}
+	d3_1 := shapes.Vec3F{X: 0.0, Y: 0.0, Z: 2.0}
+
+	// scale axes into view
 		d0 := d0_1
 		d1 := d1_1
 		d2 := d2_1
@@ -210,109 +355,5 @@ func main() {
 		gfx.ThickLineRGBA(e.Renderer.Renderer, int32(d0.X), int32(d0.Y), int32(d2.X), int32(d2.Y), 2, 127, 127, 127, 255)
 		gfx.ThickLineRGBA(e.Renderer.Renderer, int32(d0.X), int32(d0.Y), int32(d3.X), int32(d3.Y), 2, 127, 127, 127, 255)
 
-		e.Renderer.Present()
-		end := sdl.GetPerformanceCounter()
 
-		elapsed := float64(end-start) / perfFreq * 1000.0
-
-		globElapsed = float64(end-globStart) / perfFreq * 1000.0
-		if globElapsed > 10.0*1000.0 {
-			globStart = sdl.GetPerformanceCounter()
-			curFps = float64(currentFrameCounter) / globElapsed * 1000.0
-			currentFrameCounter = 0
-
-			runtime.ReadMemStats(&mem)
-		}
-
-		if USE_FIXED_FRAMERATE {
-			if 1000.0/FRAMERATE > elapsed {
-				sdl.Delay(uint32(math.Floor(1000.0/FRAMERATE - elapsed)))
-			}
-		}
-
-		rotTheta += 0.01
-
-	}
-}
-
-func RotateTriangle(t *shapes.TriangleF, theta float64) {
-	sinRotTheta, cosRotTheta := math.Sincos(theta)
-	// X-rotate
-	y := t.A.Y*float32(cosRotTheta) - t.A.Z*float32(sinRotTheta)
-	z := t.A.Y*float32(sinRotTheta) + t.A.Z*float32(cosRotTheta)
-
-	t.A.Y = y
-	t.A.Z = z
-
-	y = t.B.Y*float32(cosRotTheta) - t.B.Z*float32(sinRotTheta)
-	z = t.B.Y*float32(sinRotTheta) + t.B.Z*float32(cosRotTheta)
-
-	t.B.Y = y
-	t.B.Z = z
-
-	y = t.C.Y*float32(cosRotTheta) - t.C.Z*float32(sinRotTheta)
-	z = t.C.Y*float32(sinRotTheta) + t.C.Z*float32(cosRotTheta)
-
-	t.C.Y = y
-	t.C.Z = z
-
-	// Y-rotate
-	x := t.A.X*float32(cosRotTheta) + t.A.Z*float32(sinRotTheta)
-	z = -t.A.X*float32(sinRotTheta) + t.A.Z*float32(cosRotTheta)
-	t.A.X = x
-	t.A.Z = z
-
-	x = t.B.X*float32(cosRotTheta) + t.B.Z*float32(sinRotTheta)
-	z = -t.B.X*float32(sinRotTheta) + t.B.Z*float32(cosRotTheta)
-	t.B.X = x
-	t.B.Z = z
-
-	x = t.C.X*float32(cosRotTheta) + t.C.Z*float32(sinRotTheta)
-	z = -t.C.X*float32(sinRotTheta) + t.C.Z*float32(cosRotTheta)
-	t.C.X = x
-	t.C.Z = z
-
-	//Z-rotate
-	x = t.A.X*float32(cosRotTheta) - t.A.Y*float32(sinRotTheta)
-	y = t.A.X*float32(sinRotTheta) + t.A.Y*float32(cosRotTheta)
-	t.A.X = x
-	t.A.Y = y
-
-	x = t.B.X*float32(cosRotTheta) - t.B.Y*float32(sinRotTheta)
-	y = t.B.X*float32(sinRotTheta) + t.B.Y*float32(cosRotTheta)
-	t.B.X = x
-	t.B.Y = y
-
-	x = t.C.X*float32(cosRotTheta) - t.C.Y*float32(sinRotTheta)
-	y = t.C.X*float32(sinRotTheta) + t.C.Y*float32(cosRotTheta)
-	t.C.X = x
-	t.C.Y = y
-}
-
-func ProjectTriangle(t *shapes.TriangleF, p PerspectiveParameters) {
-	// z-translate
-	t.A.Add(&shapes.Vec3F{X: 0.0, Y: 0.0, Z: p.Zbase})
-	t.B.Add(&shapes.Vec3F{X: 0.0, Y: 0.0, Z: p.Zbase})
-	t.C.Add(&shapes.Vec3F{X: 0.0, Y: 0.0, Z: p.Zbase})
-
-	// perspective projection
-	t.A.Mul(p.Zoom / t.A.Z)
-	t.B.Mul(p.Zoom / t.B.Z)
-	t.C.Mul(p.Zoom / t.C.Z)
-
-	// scale into view
-	t.A.Add(&shapes.Vec3F{X: 1.0, Y: 1.0, Z: 0.0})
-	t.B.Add(&shapes.Vec3F{X: 1.0, Y: 1.0, Z: 0.0})
-	t.C.Add(&shapes.Vec3F{X: 1.0, Y: 1.0, Z: 0.0})
-
-	t.A.Mul(0.5)
-	t.B.Mul(0.5)
-	t.C.Mul(0.5)
-
-	t.A.X *= SCREEN_WIDTH
-	t.A.Y *= SCREEN_HEIGHT
-	t.B.X *= SCREEN_WIDTH
-	t.B.Y *= SCREEN_HEIGHT
-	t.C.X *= SCREEN_WIDTH
-	t.C.Y *= SCREEN_HEIGHT
 }

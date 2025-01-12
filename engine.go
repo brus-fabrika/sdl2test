@@ -33,8 +33,9 @@ func (e *Engine) Init() error {
 	if err := ttf.Init(); err != nil {
 		return err
 	}
+	//FiraCodeNerdFont-Regular.ttf
 
-	fnt, err := ttf.OpenFont("C:/Windows/Fonts/arial.ttf", 16)
+	fnt, err := ttf.OpenFont("/home/abrus/.fonts/FiraCodeNerdFont-Regular.ttf", 16)
 	if err != nil {
 		return err
 	}
