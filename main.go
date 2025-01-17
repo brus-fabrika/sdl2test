@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	//"fmt"
 	"math"
 	"runtime"
 	"strconv"
@@ -25,6 +25,7 @@ const (
 	X_ROTATE = 1
 	Y_ROTATE = 2
 	Z_ROTATE = 4
+	ALL_ROTATE = X_ROTATE | Y_ROTATE | Z_ROTATE
 )
 
 var (
@@ -45,6 +46,12 @@ type PerspectiveParameters struct {
 	Zfar  float32
 }
 
+type GameState struct {
+	ctrlButton bool
+	running bool
+	paused bool
+}
+
 func main() {
 
 	//	surface, err := window.GetSurface()
@@ -57,11 +64,6 @@ func main() {
 	//	colour := sdl.Color{R: 255, G: 0, B: 255, A: 255} // purple
 	//	pixel := sdl.MapRGBA(surface.Format, colour.R, colour.G, colour.B, colour.A)
 	//	surface.FillRect(&rect, pixel)
-
-	fmt.Println("NO_ROTATE:", NO_ROTATE)
-	fmt.Println("X_ROTATE:", X_ROTATE)
-	fmt.Println("Y_ROTATE:", Y_ROTATE)
-	fmt.Println("Z_ROTATE:", Z_ROTATE)
 
 	e := Engine{}
 	if err := e.Init(); err != nil {
@@ -99,14 +101,12 @@ func main() {
 
 	rotTheta := float32(0.0)
 
-	ctrlButton := false
-	running := true
-	paused := false
+	gameState := GameState{ctrlButton: false, running: true, paused: false}
 
 	mem := runtime.MemStats{}
 	runtime.ReadMemStats(&mem)
 
-	for running {
+	for gameState.running {
 
 		frameCounter++
 		currentFrameCounter++
@@ -117,51 +117,15 @@ func main() {
 			switch event.(type) {
 			case *sdl.QuitEvent:
 				println("Quit")
-				running = false
+				gameState.running = false
 			case *sdl.KeyboardEvent:
-				if event.(*sdl.KeyboardEvent).Type == sdl.KEYDOWN {
-					switch event.(*sdl.KeyboardEvent).Keysym.Sym {
-					case sdl.K_ESCAPE:
-						println("Quit")
-						running = false
-					case sdl.K_SPACE:
-						paused = !paused
-						if !paused {
-							frameCounter = 0
-							currentFrameCounter = 0
-						}
-					case sdl.K_UP:
-						perspective.Zbase += 0.1
-					case sdl.K_DOWN:
-						perspective.Zbase -= 0.1
-					case sdl.K_LCTRL:
-						ctrlButton = true
-					case sdl.K_RCTRL:
-						ctrlButton = true
-					case sdl.K_EQUALS: // zoom in
-						if ctrlButton {
-							perspective.Zoom += 0.1
-						}
-					case sdl.K_MINUS: // zoom out
-						if ctrlButton {
-							perspective.Zoom -= 0.1
-						}
-					}
-				}
-				if event.(*sdl.KeyboardEvent).Type == sdl.KEYUP {
-					switch event.(*sdl.KeyboardEvent).Keysym.Sym {
-					case sdl.K_LCTRL:
-						ctrlButton = false
-					case sdl.K_RCTRL:
-						ctrlButton = false
-					}
-				}
+				handleKeyboardEvent(event, &gameState, &perspective)
 			case *sdl.MouseWheelEvent:
-				perspective.Zoom += 0.1 * float32(event.(*sdl.MouseWheelEvent).Y)
+				handleMouseEvent(event, &perspective)
 			}
 		}
 
-		if paused {
+		if gameState.paused {
 			continue
 		}
 
@@ -181,7 +145,7 @@ func main() {
 		// cube render pipeline
 		t := m.Clone()
 		for i := range t.Triangles {
-			RotateTriangle(&t.Triangles[i], float64(rotTheta), Y_ROTATE)
+			RotateTriangle(&t.Triangles[i], float64(rotTheta), ALL_ROTATE)
 			ProjectTriangle(&t.Triangles[i], perspective)
 		}
 
@@ -217,8 +181,52 @@ func main() {
 		}
 
 		rotTheta += 0.01
-
 	}
+}
+
+func handleMouseEvent(event sdl.Event, perspective *PerspectiveParameters) {
+	perspective.Zoom += 0.1 * float32(event.(*sdl.MouseWheelEvent).Y)
+}
+
+func handleKeyboardEvent(event sdl.Event, gameState *GameState, perspective *PerspectiveParameters) {
+	if event.(*sdl.KeyboardEvent).Type == sdl.KEYDOWN {
+		switch event.(*sdl.KeyboardEvent).Keysym.Sym {
+		case sdl.K_ESCAPE:
+			println("Quit")
+			gameState.running = false
+		case sdl.K_SPACE:
+			gameState.paused = !gameState.paused
+			if !gameState.paused {
+				//frameCounter = 0
+				//currentFrameCounter = 0
+			}
+		case sdl.K_UP:
+			perspective.Zbase += 0.1
+		case sdl.K_DOWN:
+			perspective.Zbase -= 0.1
+		case sdl.K_LCTRL:
+			gameState.ctrlButton = true
+		case sdl.K_RCTRL:
+			gameState.ctrlButton = true
+		case sdl.K_EQUALS: // zoom in
+			if gameState.ctrlButton {
+				perspective.Zoom += 0.1
+			}
+		case sdl.K_MINUS: // zoom out
+			if gameState.ctrlButton {
+				perspective.Zoom -= 0.1
+			}
+		}
+	}
+	if event.(*sdl.KeyboardEvent).Type == sdl.KEYUP {
+		switch event.(*sdl.KeyboardEvent).Keysym.Sym {
+		case sdl.K_LCTRL:
+			gameState.ctrlButton = false
+		case sdl.K_RCTRL:
+			gameState.ctrlButton = false
+		}
+	}
+
 }
 
 func RotateTriangle(t *shapes.TriangleF, theta float64, rotate RotateDirection) {
@@ -229,60 +237,60 @@ func RotateTriangle(t *shapes.TriangleF, theta float64, rotate RotateDirection) 
 	sinRotTheta, cosRotTheta := math.Sincos(theta)
 
 	if rotate & X_ROTATE != 0 {
-	// X-rotate
-	y := t.A.Y*float32(cosRotTheta) - t.A.Z*float32(sinRotTheta)
-	z := t.A.Y*float32(sinRotTheta) + t.A.Z*float32(cosRotTheta)
+		// X-rotate
+		y := t.A.Y*float32(cosRotTheta) - t.A.Z*float32(sinRotTheta)
+		z := t.A.Y*float32(sinRotTheta) + t.A.Z*float32(cosRotTheta)
 
-	t.A.Y = y
-	t.A.Z = z
+		t.A.Y = y
+		t.A.Z = z
 
-	y = t.B.Y*float32(cosRotTheta) - t.B.Z*float32(sinRotTheta)
-	z = t.B.Y*float32(sinRotTheta) + t.B.Z*float32(cosRotTheta)
+		y = t.B.Y*float32(cosRotTheta) - t.B.Z*float32(sinRotTheta)
+		z = t.B.Y*float32(sinRotTheta) + t.B.Z*float32(cosRotTheta)
 
-	t.B.Y = y
-	t.B.Z = z
+		t.B.Y = y
+		t.B.Z = z
 
-	y = t.C.Y*float32(cosRotTheta) - t.C.Z*float32(sinRotTheta)
-	z = t.C.Y*float32(sinRotTheta) + t.C.Z*float32(cosRotTheta)
+		y = t.C.Y*float32(cosRotTheta) - t.C.Z*float32(sinRotTheta)
+		z = t.C.Y*float32(sinRotTheta) + t.C.Z*float32(cosRotTheta)
 
-	t.C.Y = y
-	t.C.Z = z
+		t.C.Y = y
+		t.C.Z = z
 	}
 
 	if rotate & Y_ROTATE != 0 {
-	// Y-rotate
-	x := t.A.X*float32(cosRotTheta) + t.A.Z*float32(sinRotTheta)
-	z := -t.A.X*float32(sinRotTheta) + t.A.Z*float32(cosRotTheta)
-	t.A.X = x
-	t.A.Z = z
+		// Y-rotate
+		x := t.A.X*float32(cosRotTheta) + t.A.Z*float32(sinRotTheta)
+		z := -t.A.X*float32(sinRotTheta) + t.A.Z*float32(cosRotTheta)
+		t.A.X = x
+		t.A.Z = z
 
-	x = t.B.X*float32(cosRotTheta) + t.B.Z*float32(sinRotTheta)
-	z = -t.B.X*float32(sinRotTheta) + t.B.Z*float32(cosRotTheta)
-	t.B.X = x
-	t.B.Z = z
+		x = t.B.X*float32(cosRotTheta) + t.B.Z*float32(sinRotTheta)
+		z = -t.B.X*float32(sinRotTheta) + t.B.Z*float32(cosRotTheta)
+		t.B.X = x
+		t.B.Z = z
 
-	x = t.C.X*float32(cosRotTheta) + t.C.Z*float32(sinRotTheta)
-	z = -t.C.X*float32(sinRotTheta) + t.C.Z*float32(cosRotTheta)
-	t.C.X = x
-	t.C.Z = z
+		x = t.C.X*float32(cosRotTheta) + t.C.Z*float32(sinRotTheta)
+		z = -t.C.X*float32(sinRotTheta) + t.C.Z*float32(cosRotTheta)
+		t.C.X = x
+		t.C.Z = z
 	}
 
 	if rotate & Z_ROTATE != 0 {
-	//Z-rotate
+		//Z-rotate
 		x := t.A.X*float32(cosRotTheta) - t.A.Y*float32(sinRotTheta)
 		y := t.A.X*float32(sinRotTheta) + t.A.Y*float32(cosRotTheta)
-	t.A.X = x
-	t.A.Y = y
+		t.A.X = x
+		t.A.Y = y
 
-	x = t.B.X*float32(cosRotTheta) - t.B.Y*float32(sinRotTheta)
-	y = t.B.X*float32(sinRotTheta) + t.B.Y*float32(cosRotTheta)
-	t.B.X = x
-	t.B.Y = y
+		x = t.B.X*float32(cosRotTheta) - t.B.Y*float32(sinRotTheta)
+		y = t.B.X*float32(sinRotTheta) + t.B.Y*float32(cosRotTheta)
+		t.B.X = x
+		t.B.Y = y
 
-	x = t.C.X*float32(cosRotTheta) - t.C.Y*float32(sinRotTheta)
-	y = t.C.X*float32(sinRotTheta) + t.C.Y*float32(cosRotTheta)
-	t.C.X = x
-	t.C.Y = y
+		x = t.C.X*float32(cosRotTheta) - t.C.Y*float32(sinRotTheta)
+		y = t.C.X*float32(sinRotTheta) + t.C.Y*float32(cosRotTheta)
+		t.C.X = x
+		t.C.Y = y
 	}
 }
 
@@ -315,45 +323,43 @@ func ProjectTriangle(t *shapes.TriangleF, p PerspectiveParameters) {
 }
 
 func DrawAxes(e *Engine, perspective *PerspectiveParameters) {
-		d0_1 := shapes.Vec3F{X: 0.0, Y: 0.0, Z: 1.0}
+	d0_1 := shapes.Vec3F{X: 0.0, Y: 0.0, Z: 1.0}
 	d1_1 := shapes.Vec3F{X: 1.0, Y: 0.0, Z: 1.0}
 	d2_1 := shapes.Vec3F{X: 0.0, Y: 1.0, Z: 1.0}
 	d3_1 := shapes.Vec3F{X: 0.0, Y: 0.0, Z: 2.0}
 
 	// scale axes into view
-		d0 := d0_1
-		d1 := d1_1
-		d2 := d2_1
-		d3 := d3_1
+	d0 := d0_1
+	d1 := d1_1
+	d2 := d2_1
+	d3 := d3_1
 
-		// perspective projection
-		d0.Mul(perspective.Zoom / d0.Z)
-		d1.Mul(perspective.Zoom / d1.Z)
-		d2.Mul(perspective.Zoom / d2.Z)
-		d3.Mul(perspective.Zoom / d3.Z)
+	// perspective projection
+	d0.Mul(perspective.Zoom / d0.Z)
+	d1.Mul(perspective.Zoom / d1.Z)
+	d2.Mul(perspective.Zoom / d2.Z)
+	d3.Mul(perspective.Zoom / d3.Z)
 
-		d0.Add(&shapes.Vec3F{X: 1.0, Y: 1.0, Z: 0.0})
-		d1.Add(&shapes.Vec3F{X: 1.0, Y: 1.0, Z: 0.0})
-		d2.Add(&shapes.Vec3F{X: 1.0, Y: 1.0, Z: 0.0})
-		d3.Add(&shapes.Vec3F{X: 1.0, Y: 1.0, Z: 0.0})
+	d0.Add(&shapes.Vec3F{X: 1.0, Y: 1.0, Z: 0.0})
+	d1.Add(&shapes.Vec3F{X: 1.0, Y: 1.0, Z: 0.0})
+	d2.Add(&shapes.Vec3F{X: 1.0, Y: 1.0, Z: 0.0})
+	d3.Add(&shapes.Vec3F{X: 1.0, Y: 1.0, Z: 0.0})
 
-		d0.Mul(0.5)
-		d1.Mul(0.5)
-		d2.Mul(0.5)
-		d3.Mul(0.5)
+	d0.Mul(0.5)
+	d1.Mul(0.5)
+	d2.Mul(0.5)
+	d3.Mul(0.5)
 
-		d0.X *= SCREEN_WIDTH
-		d0.Y *= SCREEN_HEIGHT
-		d1.X *= SCREEN_WIDTH
-		d1.Y *= SCREEN_HEIGHT
-		d2.X *= SCREEN_WIDTH
-		d2.Y *= SCREEN_HEIGHT
-		d3.X *= SCREEN_WIDTH
-		d3.Y *= SCREEN_HEIGHT
-		// draw axes
-		gfx.ThickLineRGBA(e.Renderer.Renderer, int32(d0.X), int32(d0.Y), int32(d1.X), int32(d1.Y), 2, 127, 127, 127, 255)
-		gfx.ThickLineRGBA(e.Renderer.Renderer, int32(d0.X), int32(d0.Y), int32(d2.X), int32(d2.Y), 2, 127, 127, 127, 255)
-		gfx.ThickLineRGBA(e.Renderer.Renderer, int32(d0.X), int32(d0.Y), int32(d3.X), int32(d3.Y), 2, 127, 127, 127, 255)
-
-
+	d0.X *= SCREEN_WIDTH
+	d0.Y *= SCREEN_HEIGHT
+	d1.X *= SCREEN_WIDTH
+	d1.Y *= SCREEN_HEIGHT
+	d2.X *= SCREEN_WIDTH
+	d2.Y *= SCREEN_HEIGHT
+	d3.X *= SCREEN_WIDTH
+	d3.Y *= SCREEN_HEIGHT
+	// draw axes
+	gfx.ThickLineRGBA(e.Renderer.Renderer, int32(d0.X), int32(d0.Y), int32(d1.X), int32(d1.Y), 2, 127, 127, 127, 255)
+	gfx.ThickLineRGBA(e.Renderer.Renderer, int32(d0.X), int32(d0.Y), int32(d2.X), int32(d2.Y), 2, 127, 127, 127, 255)
+	gfx.ThickLineRGBA(e.Renderer.Renderer, int32(d0.X), int32(d0.Y), int32(d3.X), int32(d3.Y), 2, 127, 127, 127, 255)
 }

@@ -69,7 +69,7 @@ func (m *Mesh) LoadFromFile(fp string) error {
 			f2, _ := strconv.ParseFloat(s[2], 32)
 			f3, _ := strconv.ParseFloat(s[3], 32)
 
-			v := Vec3F{X: float32(f1), Y: float32(f2), Z: float32(f3)}
+			v := Vec3F{X: float32(f1), Y: float32(f2)-0.5, Z: float32(f3)}
 			vs = append(vs, v)
 		} else if s[0] == "vt" {
 			// texture coordinate
