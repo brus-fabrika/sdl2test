@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -32,16 +33,26 @@ type Triangle struct {
 }
 
 type Mesh struct {
-	Triangles []TriangleF
-	Color     sdl.Color
+	Triangles 	[]TriangleF
+	Color     	sdl.Color
+	Normales	[]Vec3F
+	Visibles	[]bool
 }
 
 func (m *Mesh) Clone() *Mesh {
 	newMesh := &Mesh{
 		Color: m.Color,
 	}
+	
 	newMesh.Triangles = make([]TriangleF, len(m.Triangles))
 	copy(newMesh.Triangles, m.Triangles)
+	
+	newMesh.Normales = make([]Vec3F, len(m.Normales))
+	copy(newMesh.Normales, m.Normales)
+	
+	newMesh.Visibles = make([]bool, len(m.Visibles))
+	copy(newMesh.Visibles, m.Visibles)
+	
 	return newMesh
 }
 
@@ -57,6 +68,7 @@ func (m *Mesh) LoadFromFile(fp string) error {
 
 	vs := make([]Vec3F, 0)
 	ts := make([]TriangleF, 0)
+	ns := make([]Vec3F, 0)
 
 	for fileScanner.Scan() {
 		line := fileScanner.Text()
@@ -69,7 +81,7 @@ func (m *Mesh) LoadFromFile(fp string) error {
 			f2, _ := strconv.ParseFloat(s[2], 32)
 			f3, _ := strconv.ParseFloat(s[3], 32)
 
-			v := Vec3F{X: float32(f1), Y: float32(f2)-0.5, Z: float32(f3)}
+			v := Vec3F{X: float32(f1), Y: float32(f2), Z: float32(f3)}
 			vs = append(vs, v)
 		} else if s[0] == "vt" {
 			// texture coordinate
@@ -82,8 +94,18 @@ func (m *Mesh) LoadFromFile(fp string) error {
 			v1, _ := strconv.ParseInt(strings.Split(s[1], "/")[0], 10, 64)
 			v2, _ := strconv.ParseInt(strings.Split(s[2], "/")[0], 10, 64)
 			v3, _ := strconv.ParseInt(strings.Split(s[3], "/")[0], 10, 64)
-
-			ts = append(ts, TriangleF{A: vs[v1-1], B: vs[v2-1], C: vs[v3-1]})
+			
+			tr := TriangleF{A: vs[v1-1], B: vs[v2-1], C: vs[v3-1]}
+			ts = append(ts, tr)
+			// for now let's calculate normale vector ourselves
+			ab := Vec3F{X: tr.B.X - tr.A.X, Y: tr.B.Y - tr.A.Y, Z: tr.B.Z - tr.A.Z}
+			ac := Vec3F{X: tr.C.X - tr.A.X, Y: tr.C.Y - tr.A.Y, Z: tr.C.Z - tr.A.Z}
+			nX := ab.Y*ac.Z - ab.Z*ac.Y
+			nY := ab.Z*ac.X - ab.X*ac.Z
+			nZ := ab.X*ac.Y - ab.Y*ac.X
+			nmod := float32(math.Sqrt(float64(nX*nX + nY*nY + nZ*nZ)))
+			ns = append(ns, Vec3F{X: nX/nmod, Y: nY/nmod, Z: nZ/nmod})
+			
 			/*
 				if len(ss) == 3 {
 					// vertex/texture/normal
@@ -101,6 +123,12 @@ func (m *Mesh) LoadFromFile(fp string) error {
 	}
 
 	m.Triangles = ts
+	m.Normales = ns
+	// make all faces visible by default
+	m.Visibles = slices.Repeat([]bool{true}, len(m.Triangles))
+	//fmt.Printf("Triangles: %+v\n", m.Triangles)
+	//fmt.Printf("Normales : %+v\n", m.Normales)
+	//fmt.Printf("Visibles : %+v\n", m.Visibles)
 
 	return nil
 }
@@ -150,16 +178,25 @@ func (renderer *AbrRenderer) DrawCircleShape(c *CircleShape) error {
 }
 
 func (renderer *AbrRenderer) DrawMesh(m *Mesh) error {
-	if err := renderer.SetDrawColor(m.Color.R, m.Color.G, m.Color.B, m.Color.A); err != nil {
+	if err := renderer.SetDrawColor(127, 127, 127, 255); err != nil {
 		return err
 	}
-
 	var err error
 
-	for _, t := range m.Triangles {
-		err = renderer.DrawLineF(t.A.X, t.A.Y, t.B.X, t.B.Y)
-		err = renderer.DrawLineF(t.B.X, t.B.Y, t.C.X, t.C.Y)
-		err = renderer.DrawLineF(t.C.X, t.C.Y, t.A.X, t.A.Y)
+	for i, t := range m.Triangles {
+		if m.Visibles[i] {		
+			vertices := make([]sdl.Vertex, 0)
+			vertices = append(vertices, sdl.Vertex{Position: sdl.FPoint{X: t.A.X, Y: t.A.Y}, Color: m.Color})
+			vertices = append(vertices, sdl.Vertex{Position: sdl.FPoint{X: t.B.X, Y: t.B.Y}, Color: m.Color})
+			vertices = append(vertices, sdl.Vertex{Position: sdl.FPoint{X: t.C.X, Y: t.C.Y}, Color: m.Color})
+
+			err = renderer.RenderGeometry(nil, vertices, nil)
+		
+			// draw the wireframe
+			err = renderer.DrawLineF(t.A.X, t.A.Y, t.B.X, t.B.Y)
+			err = renderer.DrawLineF(t.B.X, t.B.Y, t.C.X, t.C.Y)
+			err = renderer.DrawLineF(t.C.X, t.C.Y, t.A.X, t.A.Y)
+		}
 	}
 
 	return err

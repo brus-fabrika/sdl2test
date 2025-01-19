@@ -11,7 +11,7 @@ const (
 	SCREEN_WIDTH        = 600
 	SCREEN_HEIGHT       = 600
 	FRAMERATE           = 30.0
-	USE_FIXED_FRAMERATE = false
+	USE_FIXED_FRAMERATE = true
 )
 
 
@@ -68,7 +68,7 @@ func (g *Game) Init(e *Engine) error {
 	g.state.ctrlButton = false
 
 	g.m.Color = COLOR_PURPLE
-	err := g.m.LoadFromFile("./obj/cube.obj")
+	err := g.m.LoadFromFile("./obj/sphere.obj")
 	if err != nil {
 		return err
 	}
@@ -86,8 +86,25 @@ func (g *Game) OnPreRender(){
 	// mesh render pipeline
 	t := g.m.Clone()
 	for i := range t.Triangles {
-		RotateTriangle(&t.Triangles[i], float64(g.rotTheta), ALL_ROTATE)
-		ProjectTriangle(&t.Triangles[i], g.perspective)
+		tr := &t.Triangles[i]
+		
+		RotateTriangle(tr, float64(g.rotTheta), ALL_ROTATE)
+
+		// check if current triangle is visible if looking from (0,0,0)
+		
+		// for now let's calculate normale vector ourselves
+		ab := shapes.Vec3F{X: tr.B.X - tr.A.X, Y: tr.B.Y - tr.A.Y, Z: tr.B.Z - tr.A.Z}
+		ac := shapes.Vec3F{X: tr.C.X - tr.A.X, Y: tr.C.Y - tr.A.Y, Z: tr.C.Z - tr.A.Z}
+		nX := ab.Y*ac.Z - ab.Z*ac.Y
+		nY := ab.Z*ac.X - ab.X*ac.Z
+		nZ := ab.X*ac.Y - ab.Y*ac.X
+		nmod := float32(math.Sqrt(float64(nX*nX + nY*nY + nZ*nZ)))
+		nv := shapes.Vec3F{X: nX/nmod, Y: nY/nmod, Z: nZ/nmod}
+
+		t.Normales[i] = nv
+		t.Visibles[i] = nv.Z < 0
+
+		ProjectTriangle(tr, g.perspective)
 	}
 
 	g.e.Renderer.DrawMesh(t)

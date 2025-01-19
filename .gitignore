@@ -1,4 +1,5 @@
 *.dll
 *.exe
+sdl2test
 go.sum
 vendor

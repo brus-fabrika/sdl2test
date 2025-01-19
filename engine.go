@@ -129,10 +129,10 @@ func (e *Engine) Run() {
 		//e.RenderText("Zbase: "+strconv.FormatFloat(float64(perspective.Zbase), 'f', 2, 64), 0, 32)
 		//e.RenderText("Zoom: "+strconv.FormatFloat(float64(perspective.Zoom), 'f', 2, 64), 0, 48)
 
-		e.RenderText("Heap Sys: "+strconv.FormatFloat(float64(mem.HeapSys)/1024/1024, 'f', 2, 64), 20*16, 0)
-		e.RenderText("Heap Alloc: "+strconv.FormatFloat(float64(mem.HeapAlloc)/1024/1024, 'f', 2, 64), 20*16, 16)
-		e.RenderText("Heap In Use: "+strconv.FormatFloat(float64(mem.HeapInuse)/1024/1024, 'f', 2, 64), 20*16, 32)
-		e.RenderText("Heap Idle: "+strconv.FormatFloat(float64(mem.HeapIdle)/1024/1024, 'f', 2, 64), 20*16, 48)
+		//e.RenderText("Heap Sys: "+strconv.FormatFloat(float64(mem.HeapSys)/1024/1024, 'f', 2, 64), 20*16, 0)
+		//e.RenderText("Heap Alloc: "+strconv.FormatFloat(float64(mem.HeapAlloc)/1024/1024, 'f', 2, 64), 20*16, 16)
+		//e.RenderText("Heap In Use: "+strconv.FormatFloat(float64(mem.HeapInuse)/1024/1024, 'f', 2, 64), 20*16, 32)
+		//e.RenderText("Heap Idle: "+strconv.FormatFloat(float64(mem.HeapIdle)/1024/1024, 'f', 2, 64), 20*16, 48)
 
 		e.Renderer.Present()
 
